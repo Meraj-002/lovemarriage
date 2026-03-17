@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import CommitmentSection from "@/sections/CommitmentSection";
@@ -10,7 +15,26 @@ import StatsSection from "@/sections/StatsSection";
 import TestimonialsSection from "@/sections/TestimonialsSection";
 import WhyChooseUsSection from "@/sections/WhyChooseUsSection";
 
-export default function Home() {
+export default function Dashboard() {
+    const router = useRouter();
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      setUserEmail(user.email || "");
+    };
+
+    checkUser();
+  }, [router]);
   return (
     <main>
       <Navbar />
