@@ -129,7 +129,7 @@ export default function LoginPage() {
               <div className="mt-8 rounded-[20px] border border-white/15 bg-white/10 p-4 backdrop-blur-[2px] sm:mt-10 sm:p-5">
                 <div className="flex items-center gap-3">
                   <Image
-                    src="/images/testimonials/anjali.jpg"
+                    src="https://storage.googleapis.com/uxpilot-auth.appspot.com/f8cbd7c0b9-a98f0e4fe2350005165a.png"
                     alt="Sarah & Michael"
                     width={48}
                     height={48}

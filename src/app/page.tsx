@@ -31,7 +31,7 @@ export default function Dashboard() {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
-      router.replace("/login");
+      router.replace("/signup");
       return;
     }
 
@@ -40,7 +40,7 @@ export default function Dashboard() {
       setUser(parsedUser);
     } catch {
       localStorage.removeItem("user");
-      router.replace("/login");
+      router.replace("/signup");
       return;
     } finally {
       setLoading(false);
