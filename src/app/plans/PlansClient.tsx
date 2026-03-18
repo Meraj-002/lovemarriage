@@ -18,6 +18,14 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
+type LocalUser = {
+  id: string;
+  name: string;
+  phone: string;
+  password?: string;
+  created_at?: string;
+};
+
 type PlanType = {
   id: number;
   name: string;
@@ -143,19 +151,22 @@ export default function PlansClient() {
   const [isDialogOpen, setIsDialogOpen] = useState(Boolean(initialSelectedPlan));
   const [utrNumber, setUtrNumber] = useState("");
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const upiId = "lovemarriage@paytm";
-  const qrImage = "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png"; // replace with your real QR image path
+  const qrImage = "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png";
 
   const openDialog = (plan: PlanType) => {
     setSelectedPlan(plan);
     setIsDialogOpen(true);
     setCopied(false);
+    setUtrNumber("");
   };
 
   const closeDialog = () => {
     setIsDialogOpen(false);
     setCopied(false);
+    setUtrNumber("");
   };
 
   const copyUpiId = async () => {
@@ -169,62 +180,77 @@ export default function PlansClient() {
   };
 
   const handleSubmitPaymentDetails = async () => {
-  if (!utrNumber.trim()) {
-    alert("Please enter your UTR / transaction ID.");
-    return;
-  }
+    if (!utrNumber.trim()) {
+      alert("Please enter your UTR / transaction ID.");
+      return;
+    }
 
-  if (!selectedPlan) {
-    alert("No plan selected.");
-    return;
-  }
+    if (!selectedPlan) {
+      alert("No plan selected.");
+      return;
+    }
 
-  try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const storedUser = localStorage.getItem("user");
 
-    if (userError || !user) {
+    if (!storedUser) {
       alert("Please login first.");
       return;
     }
 
-    // optional: remove old active subscriptions for testing
-    await supabase
-      .from("user_subscriptions")
-      .delete()
-      .eq("user_id", user.id);
+    let localUser: LocalUser | null = null;
 
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 6);
-
-    const { error: insertError } = await supabase
-      .from("user_subscriptions")
-      .insert({
-        user_id: user.id,
-        plan_id: selectedPlan.id,
-        status: "active",
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-      });
-
-    if (insertError) {
-      alert(insertError.message);
+    try {
+      localUser = JSON.parse(storedUser) as LocalUser;
+    } catch {
+      localStorage.removeItem("user");
+      alert("Please login first.");
       return;
     }
 
-    alert(
-      `${selectedPlan.name} plan activated successfully for testing.\nUTR: ${utrNumber}`
-    );
+    if (!localUser?.id) {
+      alert("Please login first.");
+      return;
+    }
 
-    setUtrNumber("");
-    setIsDialogOpen(false);
-  } catch {
-    alert("Something went wrong. Please try again.");
-  }
-};
+    setSubmitting(true);
+
+    try {
+      await supabase
+        .from("user_subscriptions")
+        .delete()
+        .eq("user_id", localUser.id);
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 6);
+
+      const { error: insertError } = await supabase
+        .from("user_subscriptions")
+        .insert({
+          user_id: localUser.id,
+          plan_id: selectedPlan.id,
+          status: "active",
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        });
+
+      if (insertError) {
+        alert(insertError.message);
+        return;
+      }
+
+      alert(
+        `${selectedPlan.name} plan activated successfully for testing.\nUTR: ${utrNumber}`
+      );
+
+      closeDialog();
+      window.location.reload();
+    } catch {
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -364,11 +390,9 @@ export default function PlansClient() {
 
       <Footer />
 
-      {/* Payment Dialog */}
       {isDialogOpen && selectedPlan && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4 py-4 sm:px-6">
           <div className="relative max-h-[92vh] w-full max-w-[700px] overflow-y-auto rounded-[28px] bg-white shadow-[0_25px_80px_rgba(0,0,0,0.28)]">
-            {/* Header */}
             <div className="relative bg-[#f9edf4] px-5 pb-6 pt-7 sm:px-8 sm:pb-7 sm:pt-8">
               <button
                 onClick={closeDialog}
@@ -394,9 +418,7 @@ export default function PlansClient() {
               </p>
             </div>
 
-            {/* Body */}
             <div className="px-5 pb-5 pt-6 sm:px-8 sm:pb-8">
-              {/* Selected plan summary */}
               <div className="rounded-[24px] border border-[#f2bfd8] bg-[#fff8fc] p-4 sm:p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
@@ -437,7 +459,6 @@ export default function PlansClient() {
                 </div>
               </div>
 
-              {/* QR section title */}
               <div className="mt-8 flex items-center gap-2">
                 <QrCode size={18} className="text-[#ec4899]" />
                 <h4 className="text-[18px] font-bold text-[#131a2c] sm:text-[20px]">
@@ -445,7 +466,6 @@ export default function PlansClient() {
                 </h4>
               </div>
 
-              {/* QR Card */}
               <div className="mt-4 rounded-[22px] border border-[#e6e9ef] bg-white p-4 shadow-[0_10px_24px_rgba(0,0,0,0.05)] sm:p-6">
                 <div className="flex justify-center">
                   <div className="rounded-[22px] border-4 border-[#f35aa5] bg-white p-4 sm:p-5">
@@ -469,7 +489,6 @@ export default function PlansClient() {
                 </div>
               </div>
 
-              {/* UPI ID */}
               <div className="mt-8 flex items-center gap-2">
                 <CircleDollarSign size={18} className="text-[#ec4899]" />
                 <h4 className="text-[18px] font-bold text-[#131a2c] sm:text-[20px]">
@@ -498,7 +517,6 @@ export default function PlansClient() {
                 </div>
               </div>
 
-              {/* UTR input */}
               <div className="mt-8 flex items-center gap-2">
                 <ReceiptText size={18} className="text-[#ec4899]" />
                 <h4 className="text-[18px] font-bold text-[#131a2c] sm:text-[20px]">
@@ -523,14 +541,14 @@ export default function PlansClient() {
                 </p>
               </div>
 
-              {/* Action buttons */}
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={handleSubmitPaymentDetails}
-                  className="flex h-[58px] flex-1 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-r from-[#f35aa5] to-[#ec4899] text-[18px] font-bold text-white shadow-[0_10px_24px_rgba(236,72,153,0.25)] transition hover:scale-[1.01]"
+                  disabled={submitting}
+                  className="flex h-[58px] flex-1 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-r from-[#f35aa5] to-[#ec4899] text-[18px] font-bold text-white shadow-[0_10px_24px_rgba(236,72,153,0.25)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <CheckCircle2 size={20} />
-                  Submit Payment Details
+                  {submitting ? "Submitting..." : "Submit Payment Details"}
                 </button>
 
                 <button
@@ -542,7 +560,6 @@ export default function PlansClient() {
                 </button>
               </div>
 
-              {/* Bottom trust note */}
               <div className="mt-7 rounded-[18px] border border-[#b8efc6] bg-[#eefcf2] p-4 sm:p-5">
                 <div className="flex items-start gap-4">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-white">

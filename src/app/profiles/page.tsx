@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import {
   Search,
   MapPin,
@@ -11,7 +10,6 @@ import {
   Heart,
   BriefcaseBusiness,
   GraduationCap,
-  ArrowRight,
   Sparkles,
   ShieldCheck,
   Star,
@@ -45,6 +43,14 @@ type SubscriptionRow = {
   status: string;
   plan_id: number;
   plans: PlanRelation | PlanRelation[] | null;
+};
+
+type LocalUser = {
+  id: string;
+  name: string;
+  phone: string;
+  password?: string;
+  created_at?: string;
 };
 
 const INITIAL_PAGE_SIZE = 60;
@@ -180,121 +186,146 @@ export default function ProfilesPage() {
   }, []);
 
   const fetchProfiles = useCallback(
-  async (targetCount: number, showSkeleton = false) => {
-    try {
-      if (showSkeleton) {
-        setLoading(true);
-        setError("");
-        setEndMessage("");
-      } else {
-        setLoadingMore(true);
+    async (targetCount: number, showSkeleton = false) => {
+      try {
+        if (showSkeleton) {
+          setLoading(true);
+          setError("");
+          setEndMessage("");
+        } else {
+          setLoadingMore(true);
+        }
+
+        const from = 0;
+        const to = targetCount - 1;
+
+        let query = supabase
+          .from("profiles")
+          .select(
+            "id, name, age, city, profession, description, image_url, plan_type, whatsapp_number, is_active",
+            { count: "exact" }
+          )
+          .eq("is_active", true);
+
+        if (searchTerm.trim()) {
+          query = query.ilike("name", `%${searchTerm.trim()}%`);
+        }
+
+        if (selectedCity !== "all") {
+          query = query.eq("city", selectedCity);
+        }
+
+        if (selectedMembership !== "all") {
+          query = query.eq("plan_type", selectedMembership);
+        }
+
+        if (parsedAgeRange) {
+          query = query
+            .gte("age", parsedAgeRange.min)
+            .lte("age", parsedAgeRange.max);
+        }
+
+        if (sortBy === "recent") {
+          query = query.order("id", { ascending: false });
+        } else if (sortBy === "name_asc") {
+          query = query.order("name", { ascending: true });
+        } else if (sortBy === "age_asc") {
+          query = query.order("age", { ascending: true });
+        } else if (sortBy === "age_desc") {
+          query = query.order("age", { ascending: false });
+        }
+
+        const { data, error, count } = await query.range(from, to);
+
+        if (error) {
+          setError(error.message);
+          return;
+        }
+
+        const finalData = (data as Profile[]) || [];
+        const total = count || 0;
+
+        setProfiles(finalData);
+        setTotalCount(total);
+        setLoadedCount(finalData.length);
+
+        const noMore = finalData.length >= total;
+        setHasMore(!noMore);
+
+        if (!showSkeleton && noMore) {
+          setEndMessage("You’ve reached the end.");
+          setTimeout(() => setEndMessage(""), 2500);
+        }
+      } catch {
+        setError("Failed to load profiles.");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-
-      const from = 0;
-      const to = targetCount - 1;
-
-      let query = supabase
-        .from("profiles")
-        .select(
-          "id, name, age, city, profession, description, image_url, plan_type, whatsapp_number, is_active",
-          { count: "exact" }
-        )
-        .eq("is_active", true);
-
-      if (searchTerm.trim()) {
-        query = query.ilike("name", `%${searchTerm.trim()}%`);
-      }
-
-      if (selectedCity !== "all") {
-        query = query.eq("city", selectedCity);
-      }
-
-      if (selectedMembership !== "all") {
-        query = query.eq("plan_type", selectedMembership);
-      }
-
-      if (parsedAgeRange) {
-        query = query
-          .gte("age", parsedAgeRange.min)
-          .lte("age", parsedAgeRange.max);
-      }
-
-      if (sortBy === "recent") {
-        query = query.order("id", { ascending: false });
-      } else if (sortBy === "name_asc") {
-        query = query.order("name", { ascending: true });
-      } else if (sortBy === "age_asc") {
-        query = query.order("age", { ascending: true });
-      } else if (sortBy === "age_desc") {
-        query = query.order("age", { ascending: false });
-      }
-
-      const { data, error, count } = await query.range(from, to);
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      const finalData = (data as Profile[]) || [];
-      const total = count || 0;
-
-      setProfiles(finalData);
-      setTotalCount(total);
-      setLoadedCount(finalData.length);
-
-      const noMore = finalData.length >= total;
-      setHasMore(!noMore);
-
-      if (!showSkeleton && noMore) {
-        setEndMessage("You’ve reached the end.");
-        setTimeout(() => setEndMessage(""), 2500);
-      }
-    } catch {
-      setError("Failed to load profiles.");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  },
-  [parsedAgeRange, searchTerm, selectedCity, selectedMembership, sortBy]
-);
+    },
+    [parsedAgeRange, searchTerm, selectedCity, selectedMembership, sortBy]
+  );
 
   useEffect(() => {
     fetchCityOptions();
   }, [fetchCityOptions]);
 
   useEffect(() => {
-  fetchProfiles(INITIAL_PAGE_SIZE, false);
-}, [searchTerm, selectedCity, selectedMembership, selectedAgeRange, sortBy, fetchProfiles]);
+    fetchProfiles(INITIAL_PAGE_SIZE, false);
+  }, [
+    searchTerm,
+    selectedCity,
+    selectedMembership,
+    selectedAgeRange,
+    sortBy,
+    fetchProfiles,
+  ]);
 
   const handleFindMatches = () => {
-  setSearchTerm(searchInput);
-};
+    setSearchTerm(searchInput);
+  };
 
   const handleLoadMore = () => {
-  if (loadingMore) return;
+    if (loadingMore) return;
 
-  if (!hasMore) {
-    setEndMessage("You’ve reached the end.");
-    setTimeout(() => setEndMessage(""), 2500);
-    return;
-  }
+    if (!hasMore) {
+      setEndMessage("You’ve reached the end.");
+      setTimeout(() => setEndMessage(""), 2500);
+      return;
+    }
 
-  fetchProfiles(loadedCount + LOAD_MORE_SIZE, false);
-};
+    fetchProfiles(loadedCount + LOAD_MORE_SIZE, false);
+  };
 
   const handleWhatsAppClick = async (profile: Profile) => {
     try {
       setActionMessage("");
       setCheckingProfileId(profile.id);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const storedUser = localStorage.getItem("user");
 
-      if (userError || !user) {
+      if (!storedUser) {
+        setActionMessage("Please login first to continue.");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1200);
+        return;
+      }
+
+      let localUser: LocalUser | null = null;
+
+      try {
+        localUser = JSON.parse(storedUser) as LocalUser;
+      } catch {
+        localStorage.removeItem("user");
+        setActionMessage("Please login first to continue.");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1200);
+        return;
+      }
+
+      if (!localUser?.id) {
         setActionMessage("Please login first to continue.");
         setTimeout(() => {
           window.location.href = "/login";
@@ -316,7 +347,7 @@ export default function ProfilesPage() {
             )
           `
         )
-        .eq("user_id", user.id)
+        .eq("user_id", localUser.id)
         .eq("status", "active")
         .order("id", { ascending: false })
         .limit(1)
@@ -577,9 +608,7 @@ export default function ProfilesPage() {
                       <img
                         src={getImageSrc(profile)}
                         alt={profile.name}
-                        
                         className="h-full w-full object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                       />
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />

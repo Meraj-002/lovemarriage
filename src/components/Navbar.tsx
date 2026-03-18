@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Heart,
-  UserCircle,
-  Menu,
-  X,
-  LogOut,
-} from "lucide-react";
+import { Heart, UserCircle, Menu, X, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+type LocalUser = {
+  id: string;
+  name: string;
+  phone: string;
+  password?: string;
+  created_at?: string;
+};
 
 type PlanRelation = {
   id: number;
@@ -29,7 +31,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [activePlan, setActivePlan] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -90,38 +92,29 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const getUserAndPlan = async () => {
-      const { data } = await supabase.auth.getUser();
-      const currentUser = data.user ?? null;
+    const storedUser = localStorage.getItem("user");
 
-      setUser(currentUser);
+    if (!storedUser) {
+      setUser(null);
+      setActivePlan("");
+      return;
+    }
 
-      if (currentUser) {
-        await fetchActivePlan(currentUser.id);
+    try {
+      const parsedUser: LocalUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+
+      if (parsedUser?.id) {
+        fetchActivePlan(parsedUser.id);
       } else {
         setActivePlan("");
       }
-    };
-
-    getUserAndPlan();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        await fetchActivePlan(currentUser.id);
-      } else {
-        setActivePlan("");
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    } catch {
+      localStorage.removeItem("user");
+      setUser(null);
+      setActivePlan("");
+    }
+  }, [pathname]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -139,8 +132,9 @@ export default function Navbar() {
     };
   }, [mobileMenuOpen]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
     setActivePlan("");
     setMobileMenuOpen(false);
     router.push("/");
@@ -288,10 +282,10 @@ export default function Navbar() {
 
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[#1f2937]">
-                        {user.email}
+                        {user.name}
                       </p>
                       <p className="text-xs text-[#6b7280]">
-                        {activePlan ? `${activePlan} Member` : "Logged in"}
+                        {user.phone}
                       </p>
                     </div>
                   </div>

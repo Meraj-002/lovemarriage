@@ -9,9 +9,8 @@ import {
   ShieldCheck,
   Lock,
   Users,
-  Mail,
+  Phone,
   KeyRound,
-  Facebook,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
@@ -19,38 +18,53 @@ import { supabase } from "@/lib/supabase";
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const normalizePhone = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    return digits.length === 10 ? digits : "";
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
+    if (!phone || !password) {
       setError("Please fill all fields.");
+      return;
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!normalizedPhone) {
+      setError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("phone", normalizedPhone)
+        .eq("password", password)
+        .single();
 
-      if (error) {
-        setError(error.message);
+      if (error || !data) {
+        setError("Invalid phone or password");
         return;
       }
 
+      localStorage.setItem("user", JSON.stringify(data));
       router.push("/dashboard");
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -62,7 +76,6 @@ export default function LoginPage() {
 
       <main className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.08)] lg:grid-cols-2">
-          {/* Left Panel */}
           <section className="relative overflow-hidden bg-gradient-to-br from-[#f0449f] via-[#ea66b0] to-[#b56ae8] px-6 py-8 text-white sm:px-8 sm:py-10 lg:px-10 lg:py-12">
             <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-white/10 sm:h-36 sm:w-36" />
             <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 sm:h-36 sm:w-36" />
@@ -145,7 +158,6 @@ export default function LoginPage() {
             </div>
           </section>
 
-          {/* Right Panel */}
           <section className="bg-white px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
             <div className="mx-auto max-w-md">
               <h2 className="text-[32px] font-extrabold leading-tight tracking-[-0.03em] text-[#162033] sm:text-[40px]">
@@ -168,15 +180,15 @@ export default function LoginPage() {
 
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-[#374151]">
-                    Email Address
+                    Mobile Number
                   </label>
                   <div className="flex h-[52px] items-center gap-3 rounded-[14px] border border-[#eceef3] bg-white px-4 text-[#9ca3af]">
-                    <Mail size={18} />
+                    <Phone size={18} />
                     <input
-                      type="email"
-                      placeholder="your@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      type="tel"
+                      placeholder="9876543210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       className="h-full w-full border-none bg-transparent text-sm text-[#374151] outline-none placeholder:text-[#9ca3af]"
                     />
                   </div>
@@ -225,30 +237,6 @@ export default function LoginPage() {
                   {loading ? "Logging in..." : "Login to Your Account"}
                 </button>
               </form>
-
-              <div className="mt-7 flex items-center gap-4 sm:mt-8">
-                <div className="h-px flex-1 bg-[#eceef3]" />
-                <span className="text-sm text-[#6b7280]">Or continue with</span>
-                <div className="h-px flex-1 bg-[#eceef3]" />
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className="flex h-[50px] items-center justify-center gap-2 rounded-[14px] border border-[#eceef3] bg-white text-sm font-semibold text-[#374151] transition hover:bg-gray-50"
-                >
-                  <span className="text-xl font-bold text-[#ea4335]">G</span>
-                  Google
-                </button>
-
-                <button
-                  type="button"
-                  className="flex h-[50px] items-center justify-center gap-2 rounded-[14px] border border-[#eceef3] bg-white text-sm font-semibold text-[#374151] transition hover:bg-gray-50"
-                >
-                  <Facebook size={18} className="fill-[#1877f2] text-[#1877f2]" />
-                  Facebook
-                </button>
-              </div>
 
               <p className="mt-7 text-center text-[15px] text-[#4b5563] sm:mt-8 sm:text-[16px]">
                 Don&apos;t have an account?{" "}
