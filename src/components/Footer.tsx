@@ -10,6 +10,7 @@ import {
   Phone,
   Mail,
   MessageCircle,
+  Send,
 } from "lucide-react";
 
 const trustItems = [
@@ -129,7 +130,7 @@ export default function Footer() {
               </h4>
 
               <div className="mt-8 space-y-6">
-                <div className="flex items-start gap-4">
+                {/* <div className="flex items-start gap-4">
                   <MapPin
                     size={20}
                     className="mt-1 text-[#ff5aa8]"
@@ -140,16 +141,21 @@ export default function Footer() {
                     <br />
                     Maharashtra 400001
                   </p>
-                </div>
+                </div> */}
 
-                <div className="flex items-center gap-4">
-                  <Phone
-                    size={20}
-                    className="text-[#ff5aa8]"
-                    strokeWidth={2.3}
-                  />
-                  <p className="text-[18px] text-white/70">+91 98765 43210</p>
-                </div>
+               <a
+  href="https://t.me/yourusername" // 👈 replace with your Telegram link
+  target="_blank"
+  rel="noopener noreferrer"
+  className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition"
+>
+  <Send
+    size={20}
+    className="text-[#ff5aa8]"
+    strokeWidth={2.3}
+  />
+  <p className="text-[18px] text-white/70">Telegram</p>
+</a>
 
                 <div className="flex items-center gap-4">
                   <Mail
@@ -162,7 +168,7 @@ export default function Footer() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4">
+                {/* <div className="flex items-center gap-4">
                   <MessageCircle
                     size={20}
                     className="text-[#ff5aa8]"
@@ -171,7 +177,7 @@ export default function Footer() {
                   <p className="text-[18px] text-white/70">
                     WhatsApp: +91 98765 43210
                   </p>
-                </div>
+                </div> */}
               </div>
 
               {/* Support box */}

@@ -62,7 +62,7 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("user", JSON.stringify(data));
-      router.push("/dashboard");
+      router.push("/profiles");
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -105,7 +105,7 @@ export default function LoginPage() {
                     <Phone size={18} />
                     <input
                       type="tel"
-                      placeholder="9876543210"
+                      placeholder="1234567890"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       className="h-full w-full border-none bg-transparent text-sm text-[#374151] outline-none placeholder:text-[#9ca3af]"
