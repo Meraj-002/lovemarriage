@@ -33,32 +33,37 @@ export default function AddProfilePage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage("");
-    setError("");
+  e.preventDefault();
+  setMessage("");
+  setError("");
 
-    if (
-      !name.trim() ||
-      !age.trim() ||
-      !city.trim() ||
-      !profession.trim() ||
-      !planType.trim()
-    ) {
-      setError("Please fill all required fields.");
-      return;
-    }
+  if (
+    !name.trim() ||
+    !age.trim() ||
+    !city.trim() ||
+    !profession.trim() ||
+    !planType.trim()
+  ) {
+    setError("Please fill all required fields.");
+    return;
+  }
 
-    const numericAge = Number(age);
+  const numericAge = Number(age);
 
-    if (Number.isNaN(numericAge) || numericAge < 18 || numericAge > 99) {
-      setError("Please enter a valid age.");
-      return;
-    }
+  if (Number.isNaN(numericAge) || numericAge < 18 || numericAge > 99) {
+    setError("Please enter a valid age.");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const payload = {
+  try {
+    const response = await fetch("/api/admin/add-profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         name: name.trim(),
         age: numericAge,
         city: city.trim(),
@@ -68,27 +73,25 @@ export default function AddProfilePage() {
         plan_type: planType,
         whatsapp_number: whatsappNumber.trim() || null,
         is_active: isActive,
-      };
+      }),
+    });
 
-      console.log("Submitting profile:", payload);
+    const result = await response.json();
 
-      const { error } = await supabase.from("profiles").insert([payload]);
-
-      if (error) {
-        console.error("Insert error:", error);
-        setError(error.message);
-        return;
-      }
-
-      setMessage("Profile added successfully.");
-      resetForm();
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      setError(result.error || "Failed to add profile.");
+      return;
     }
-  };
+
+    setMessage("Profile added successfully.");
+    resetForm();
+  } catch (error) {
+    console.error(error);
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#fcfcfd]">

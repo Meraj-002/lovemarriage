@@ -4,27 +4,22 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Heart, UserCircle, Menu, X, LogOut } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
 type LocalUser = {
-  id: string;
+  id: number;
   name: string;
   phone: string;
-  password?: string;
   created_at?: string;
 };
 
-type PlanRelation = {
+type UserPlan = {
   id: number;
   name: string;
+  price: number;
   rank: number;
-};
-
-type SubscriptionRow = {
-  id: number;
   status: string;
-  plan_id: number;
-  plans: PlanRelation | PlanRelation[] | null;
+  start_date: string;
+  end_date: string;
 };
 
 export default function Navbar() {
@@ -57,63 +52,60 @@ export default function Navbar() {
     return "bg-gradient-to-r from-[#7d8597] via-[#98a2b3] to-[#c0c7d1] text-white";
   };
 
-  const fetchActivePlan = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_subscriptions")
-      .select(
-        `
-        id,
-        status,
-        plan_id,
-        plans (
-          id,
-          name,
-          rank
-        )
-      `
-      )
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .order("id", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const fetchActivePlan = async (userId: number) => {
+    try {
+      const response = await fetch(`/api/user-plan?userId=${userId}`);
+      const result = await response.json();
 
-    if (error || !data) {
+      if (!response.ok || !result.hasPlan || !result.plan) {
+        setActivePlan("");
+        return;
+      }
+
+      const plan = result.plan as UserPlan;
+      setActivePlan(plan.name || "");
+    } catch (error) {
+      console.error("Failed to fetch active plan:", error);
       setActivePlan("");
-      return;
     }
-
-    const typedData = data as SubscriptionRow;
-    const plan = Array.isArray(typedData.plans)
-      ? typedData.plans[0]
-      : typedData.plans;
-
-    setActivePlan(plan?.name || "");
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const loadUserAndPlan = async () => {
+      const storedUser = localStorage.getItem("user");
 
-    if (!storedUser) {
-      setUser(null);
-      setActivePlan("");
-      return;
-    }
+      if (!storedUser) {
+        setUser(null);
+        setActivePlan("");
+        return;
+      }
 
-    try {
-      const parsedUser: LocalUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+      try {
+        const parsedUser = JSON.parse(storedUser) as LocalUser;
+        setUser(parsedUser);
 
-      if (parsedUser?.id) {
-        fetchActivePlan(parsedUser.id);
-      } else {
+        if (parsedUser?.id) {
+          await fetchActivePlan(parsedUser.id);
+        }
+      } catch (error) {
+        console.error("Invalid stored user:", error);
+        localStorage.removeItem("user");
+        setUser(null);
         setActivePlan("");
       }
-    } catch {
-      localStorage.removeItem("user");
-      setUser(null);
-      setActivePlan("");
-    }
+    };
+
+    loadUserAndPlan();
+
+    const handleStorageChange = () => {
+      loadUserAndPlan();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -137,7 +129,7 @@ export default function Navbar() {
     setUser(null);
     setActivePlan("");
     setMobileMenuOpen(false);
-    router.push("/");
+    router.push("/login");
   };
 
   const closeMobileMenu = () => {
@@ -285,7 +277,7 @@ export default function Navbar() {
                         {user.name}
                       </p>
                       <p className="text-xs text-[#6b7280]">
-                        {user.phone}
+                        {activePlan ? `${activePlan} Member` : "Logged in"}
                       </p>
                     </div>
                   </div>

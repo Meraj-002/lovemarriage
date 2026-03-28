@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import {
   Medal,
   Crown,
@@ -19,10 +18,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 type LocalUser = {
-  id: string;
+  id: number;
   name: string;
   phone: string;
-  password?: string;
   created_at?: string;
 };
 
@@ -151,16 +149,16 @@ export default function PlansClient() {
   const [isDialogOpen, setIsDialogOpen] = useState(Boolean(initialSelectedPlan));
   const [utrNumber, setUtrNumber] = useState("");
   const [copied, setCopied] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const upiId = "lovemarriage@paytm";
-  const qrImage = "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png";
+  const qrImage =
+    "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png";
 
   const openDialog = (plan: PlanType) => {
     setSelectedPlan(plan);
     setIsDialogOpen(true);
     setCopied(false);
-    setUtrNumber("");
   };
 
   const closeDialog = () => {
@@ -194,61 +192,61 @@ export default function PlansClient() {
 
     if (!storedUser) {
       alert("Please login first.");
+      window.location.href = "/login";
       return;
     }
 
-    let localUser: LocalUser | null = null;
+    let currentUser: LocalUser | null = null;
 
     try {
-      localUser = JSON.parse(storedUser) as LocalUser;
+      currentUser = JSON.parse(storedUser) as LocalUser;
     } catch {
       localStorage.removeItem("user");
-      alert("Please login first.");
+      alert("Please login again.");
+      window.location.href = "/login";
       return;
     }
 
-    if (!localUser?.id) {
-      alert("Please login first.");
+    if (!currentUser?.id) {
+      alert("Invalid user session. Please login again.");
+      window.location.href = "/login";
       return;
     }
-
-    setSubmitting(true);
 
     try {
-      await supabase
-        .from("user_subscriptions")
-        .delete()
-        .eq("user_id", localUser.id);
+      setLoading(true);
 
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 6);
+      const response = await fetch("/api/activate-plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          planId: selectedPlan.id,
+          utrNumber: utrNumber.trim(),
+        }),
+      });
 
-      const { error: insertError } = await supabase
-        .from("user_subscriptions")
-        .insert({
-          user_id: localUser.id,
-          plan_id: selectedPlan.id,
-          status: "active",
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-        });
+      const result = await response.json();
 
-      if (insertError) {
-        alert(insertError.message);
+      if (!response.ok) {
+        alert(result.error || "Failed to activate plan.");
         return;
       }
 
       alert(
-        `${selectedPlan.name} plan activated successfully for testing.\nUTR: ${utrNumber}`
+        `${selectedPlan.name} plan payment submitted successfully. Your membership will be activated after verification.\nUTR: ${utrNumber}`
       );
 
-      closeDialog();
-      window.location.reload();
-    } catch {
+      window.dispatchEvent(new Event("storage"));
+      setUtrNumber("");
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error(error);
       alert("Something went wrong. Please try again.");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -544,11 +542,11 @@ export default function PlansClient() {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={handleSubmitPaymentDetails}
-                  disabled={submitting}
+                  disabled={loading}
                   className="flex h-[58px] flex-1 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-r from-[#f35aa5] to-[#ec4899] text-[18px] font-bold text-white shadow-[0_10px_24px_rgba(236,72,153,0.25)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <CheckCircle2 size={20} />
-                  {submitting ? "Submitting..." : "Submit Payment Details"}
+                  {loading ? "Submitting..." : "Submit Payment Details"}
                 </button>
 
                 <button

@@ -16,7 +16,6 @@ import {
   PhoneCall,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import { supabase } from "@/lib/supabase";
 import Footer from "@/components/Footer";
 
 type Profile = {
@@ -29,27 +28,13 @@ type Profile = {
   image_url: string | null;
   plan_type: string;
   whatsapp_number: string | null;
-  is_active: boolean;
-};
-
-type PlanRelation = {
-  id: number;
-  name: string;
-  rank: number;
-};
-
-type SubscriptionRow = {
-  id: number;
-  status: string;
-  plan_id: number;
-  plans: PlanRelation | PlanRelation[] | null;
+  is_active: number;
 };
 
 type LocalUser = {
-  id: string;
+  id: number;
   name: string;
   phone: string;
-  password?: string;
   created_at?: string;
 };
 
@@ -99,13 +84,6 @@ function getPlanLabel(plan: string) {
   return "Silver";
 }
 
-function getPlanRank(plan: string) {
-  const normalized = plan?.toLowerCase();
-  if (normalized === "diamond") return 3;
-  if (normalized === "gold") return 2;
-  return 1;
-}
-
 function capitalizePlan(plan: string) {
   const normalized = plan?.toLowerCase();
   if (normalized === "diamond") return "Diamond";
@@ -137,7 +115,6 @@ function getImageSrc(profile: Profile) {
 
 export default function ProfilesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,7 +125,7 @@ export default function ProfilesPage() {
   const [sortBy, setSortBy] = useState("recent");
 
   const [loadedCount, setLoadedCount] = useState(INITIAL_PAGE_SIZE);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
@@ -165,121 +142,62 @@ export default function ProfilesPage() {
     return { min, max };
   }, [selectedAgeRange]);
 
-  const fetchCityOptions = useCallback(async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("city")
-      .eq("is_active", true)
-      .limit(1000);
-
-    if (!data) return;
-
-    const uniqueCities = Array.from(
-      new Set(
-        data
-          .map((item) => item.city)
-          .filter((city): city is string => Boolean(city))
-      )
-    ).sort((a, b) => a.localeCompare(b));
-
-    setCityOptions(uniqueCities);
-  }, []);
-
   const fetchProfiles = useCallback(
-    async (targetCount: number, showSkeleton = false) => {
+    async (targetCount: number, showMainLoader = false) => {
       try {
-        if (showSkeleton) {
+        if (showMainLoader) {
           setLoading(true);
-          setError("");
-          setEndMessage("");
         } else {
           setLoadingMore(true);
         }
 
-        const from = 0;
-        const to = targetCount - 1;
+        setError("");
 
-        let query = supabase
-          .from("profiles")
-          .select(
-            "id, name, age, city, profession, description, image_url, plan_type, whatsapp_number, is_active",
-            { count: "exact" }
-          )
-          .eq("is_active", true);
+        const params = new URLSearchParams({
+          search: searchTerm,
+          city: selectedCity,
+          membership: selectedMembership,
+          ageRange: selectedAgeRange,
+          sortBy,
+          limit: String(targetCount),
+        });
 
-        if (searchTerm.trim()) {
-          query = query.ilike("name", `%${searchTerm.trim()}%`);
-        }
+        const response = await fetch(`/api/profiles?${params.toString()}`);
+        const result = await response.json();
 
-        if (selectedCity !== "all") {
-          query = query.eq("city", selectedCity);
-        }
-
-        if (selectedMembership !== "all") {
-          query = query.eq("plan_type", selectedMembership);
-        }
-
-        if (parsedAgeRange) {
-          query = query
-            .gte("age", parsedAgeRange.min)
-            .lte("age", parsedAgeRange.max);
-        }
-
-        if (sortBy === "recent") {
-          query = query.order("id", { ascending: false });
-        } else if (sortBy === "name_asc") {
-          query = query.order("name", { ascending: true });
-        } else if (sortBy === "age_asc") {
-          query = query.order("age", { ascending: true });
-        } else if (sortBy === "age_desc") {
-          query = query.order("age", { ascending: false });
-        }
-
-        const { data, error, count } = await query.range(from, to);
-
-        if (error) {
-          setError(error.message);
+        if (!response.ok) {
+          setError(result.error || "Failed to load profiles.");
           return;
         }
 
-        const finalData = (data as Profile[]) || [];
-        const total = count || 0;
+        const fetchedProfiles = (result.profiles || []) as Profile[];
+        setProfiles(fetchedProfiles);
+        setLoadedCount(fetchedProfiles.length);
+        setHasMore(fetchedProfiles.length >= targetCount);
 
-        setProfiles(finalData);
-        setTotalCount(total);
-        setLoadedCount(finalData.length);
+        const cities = Array.from(
+          new Set(
+            fetchedProfiles
+              .map((profile) => profile.city)
+              .filter((city): city is string => Boolean(city))
+          )
+        ).sort((a, b) => a.localeCompare(b));
 
-        const noMore = finalData.length >= total;
-        setHasMore(!noMore);
-
-        if (!showSkeleton && noMore) {
-          setEndMessage("You’ve reached the end.");
-          setTimeout(() => setEndMessage(""), 2500);
-        }
-      } catch {
+        setCityOptions(cities);
+      } catch (error) {
+        console.error(error);
         setError("Failed to load profiles.");
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [parsedAgeRange, searchTerm, selectedCity, selectedMembership, sortBy]
+    [searchTerm, selectedCity, selectedMembership, selectedAgeRange, sortBy]
   );
 
   useEffect(() => {
-    fetchCityOptions();
-  }, [fetchCityOptions]);
-
-  useEffect(() => {
-    fetchProfiles(INITIAL_PAGE_SIZE, false);
-  }, [
-    searchTerm,
-    selectedCity,
-    selectedMembership,
-    selectedAgeRange,
-    sortBy,
-    fetchProfiles,
-  ]);
+    fetchProfiles(INITIAL_PAGE_SIZE, true);
+  }, [fetchProfiles]);
 
   const handleFindMatches = () => {
     setSearchTerm(searchInput);
@@ -312,12 +230,20 @@ export default function ProfilesPage() {
         return;
       }
 
-      let localUser: LocalUser | null = null;
+      let currentUser: LocalUser | null = null;
 
       try {
-        localUser = JSON.parse(storedUser) as LocalUser;
+        currentUser = JSON.parse(storedUser) as LocalUser;
       } catch {
         localStorage.removeItem("user");
+        setActionMessage("Please login again.");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1200);
+        return;
+      }
+
+      if (!currentUser?.id) {
         setActionMessage("Please login first to continue.");
         setTimeout(() => {
           window.location.href = "/login";
@@ -325,76 +251,36 @@ export default function ProfilesPage() {
         return;
       }
 
-      if (!localUser?.id) {
-        setActionMessage("Please login first to continue.");
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1200);
+      const response = await fetch(
+        `/api/profile-access?userId=${currentUser.id}&profileId=${profile.id}`
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        setActionMessage(result.error || "Could not verify access.");
         return;
       }
 
-      const { data: subscription, error: subscriptionError } = await supabase
-        .from("user_subscriptions")
-        .select(
-          `
-            id,
-            status,
-            plan_id,
-            plans (
-              id,
-              name,
-              rank
-            )
-          `
-        )
-        .eq("user_id", localUser.id)
-        .eq("status", "active")
-        .order("id", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      if (!result.allowed) {
+        const requiredPlanName = capitalizePlan(result.requiredPlan || "silver");
 
-      if (subscriptionError) {
-        setActionMessage("Could not verify your plan. Please try again.");
-        return;
-      }
-
-      const requiredPlanRank = getPlanRank(profile.plan_type);
-      const requiredPlanName = capitalizePlan(profile.plan_type);
-
-      const typedSubscription = subscription as SubscriptionRow | null;
-
-      if (!typedSubscription || !typedSubscription.plans) {
         setActionMessage(
           `This profile requires the ${requiredPlanName} plan. Redirecting to plans...`
         );
+
         setTimeout(() => {
-          window.location.href = `/plans?required=${profile.plan_type}&profile=${profile.id}`;
+          window.location.href = `/plans?required=${result.requiredPlan}&profile=${profile.id}`;
         }, 1500);
+
         return;
       }
 
-      const userPlan = Array.isArray(typedSubscription.plans)
-        ? typedSubscription.plans[0]
-        : typedSubscription.plans;
-
-      const userPlanRank = userPlan?.rank || 0;
-
-      if (userPlanRank < requiredPlanRank) {
-        setActionMessage(
-          `This profile requires the ${requiredPlanName} plan. Redirecting to plans...`
-        );
-        setTimeout(() => {
-          window.location.href = `/plans?required=${profile.plan_type}&profile=${profile.id}`;
-        }, 1500);
-        return;
-      }
-
-      if (!profile.whatsapp_number) {
+      if (!result.whatsappNumber) {
         setActionMessage("WhatsApp number is not available for this profile.");
         return;
       }
 
-      const cleanPhone = profile.whatsapp_number.replace(/\D/g, "");
+      const cleanPhone = String(result.whatsappNumber).replace(/\D/g, "");
 
       if (!cleanPhone) {
         setActionMessage("Invalid WhatsApp number.");
@@ -402,7 +288,8 @@ export default function ProfilesPage() {
       }
 
       window.open(`https://wa.me/${cleanPhone}`, "_blank");
-    } catch {
+    } catch (error) {
+      console.error(error);
       setActionMessage("Something went wrong. Please try again.");
     } finally {
       setCheckingProfileId(null);
@@ -443,7 +330,7 @@ export default function ProfilesPage() {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by name or ID..."
+                placeholder="Search by name..."
                 className="h-full w-full border-none bg-transparent text-sm text-[#374151] outline-none placeholder:text-[#9ca3af]"
               />
             </div>
@@ -529,8 +416,7 @@ export default function ProfilesPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[15px] font-semibold text-[#4b5563]">
-              Showing <span className="font-bold">{profiles.length}</span> of{" "}
-              <span className="font-bold">{totalCount}</span> premium profiles
+              Showing <span className="font-bold">{profiles.length}</span> premium profiles
             </p>
 
             <div className="flex items-center gap-3">
