@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+// import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Medal,
@@ -151,9 +152,33 @@ export default function PlansClient() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const upiId = "lovemarriage@paytm";
-  const qrImage =
-    "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png";
+  const [upiId, setUpiId] = useState("lovemarriage@paytm");
+const [qrImage, setQrImage] = useState(
+  "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png"
+);
+
+useEffect(() => {
+  const fetchPaymentSettings = async () => {
+    try {
+      const response = await fetch("/api/payment-settings");
+      const result = await response.json();
+
+      if (!response.ok) return;
+
+      if (result.upi_id) {
+        setUpiId(result.upi_id);
+      }
+
+      if (result.qr_image) {
+        setQrImage(result.qr_image);
+      }
+    } catch (error) {
+      console.error("Failed to load payment settings:", error);
+    }
+  };
+
+  fetchPaymentSettings();
+}, []);
 
   const openDialog = (plan: PlanType) => {
     setSelectedPlan(plan);
