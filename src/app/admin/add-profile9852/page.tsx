@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -17,6 +16,7 @@ export default function AddProfilePage() {
   const [isActive, setIsActive] = useState(true);
 
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -32,66 +32,106 @@ export default function AddProfilePage() {
     setIsActive(true);
   };
 
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setMessage("");
+
+    try {
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(
+        "https://uploads.lovemarriageonline.store/upload.php",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        setError(result.error || "Image upload failed.");
+        return;
+      }
+
+      setImageUrl(result.url);
+      setMessage("Image uploaded successfully.");
+    } catch (error) {
+      console.error(error);
+      setError("Image upload failed. Please try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setMessage("");
-  setError("");
+    e.preventDefault();
+    setMessage("");
+    setError("");
 
-  if (
-    !name.trim() ||
-    !age.trim() ||
-    !city.trim() ||
-    !profession.trim() ||
-    !planType.trim()
-  ) {
-    setError("Please fill all required fields.");
-    return;
-  }
-
-  const numericAge = Number(age);
-
-  if (Number.isNaN(numericAge) || numericAge < 18 || numericAge > 99) {
-    setError("Please enter a valid age.");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const response = await fetch("/api/admin/add-profile", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: name.trim(),
-        age: numericAge,
-        city: city.trim(),
-        profession: profession.trim(),
-        description: description.trim() || null,
-        image_url: imageUrl.trim() || null,
-        plan_type: planType,
-        whatsapp_number: whatsappNumber.trim() || null,
-        is_active: isActive,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      setError(result.error || "Failed to add profile.");
+    if (
+      !name.trim() ||
+      !age.trim() ||
+      !city.trim() ||
+      !profession.trim() ||
+      !planType.trim()
+    ) {
+      setError("Please fill all required fields.");
       return;
     }
 
-    setMessage("Profile added successfully.");
-    resetForm();
-  } catch (error) {
-    console.error(error);
-    setError("Something went wrong. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+    const numericAge = Number(age);
+
+    if (Number.isNaN(numericAge) || numericAge < 18 || numericAge > 99) {
+      setError("Please enter a valid age.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/add-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          age: numericAge,
+          city: city.trim(),
+          profession: profession.trim(),
+          description: description.trim() || null,
+          image_url: imageUrl.trim() || null,
+          plan_type: planType,
+          whatsapp_number: whatsappNumber.trim() || null,
+          is_active: isActive,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to add profile.");
+        return;
+      }
+
+      setMessage("Profile added successfully.");
+      resetForm();
+    } catch (error) {
+      console.error(error);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#fcfcfd]">
@@ -198,15 +238,34 @@ export default function AddProfilePage() {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-[#374151]">
-                  Image URL
+                  Upload Image
                 </label>
+
                 <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Paste image URL"
-                  className="h-[52px] w-full rounded-[14px] border border-[#e5e7eb] px-4 text-sm outline-none focus:border-pink-400"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="block w-full rounded-[14px] border border-[#e5e7eb] px-4 py-3 text-sm outline-none focus:border-pink-400"
                 />
+
+                {uploadingImage && (
+                  <p className="mt-2 text-sm text-[#ff2f92]">
+                    Uploading image...
+                  </p>
+                )}
+
+                {imageUrl && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-sm font-medium text-[#374151]">
+                      Image Preview
+                    </p>
+                    <img
+                      src={imageUrl}
+                      alt="Uploaded preview"
+                      className="h-40 w-40 rounded-[14px] border border-[#e5e7eb] object-cover"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -251,7 +310,7 @@ export default function AddProfilePage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploadingImage}
                 className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-gradient-to-r from-[#f35aa5] to-[#a855f7] text-base font-bold text-white shadow-[0_10px_24px_rgba(226,92,177,0.25)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading ? "Adding Profile..." : "Add Profile"}
