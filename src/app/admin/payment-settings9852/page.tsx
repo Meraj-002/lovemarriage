@@ -9,6 +9,7 @@ export default function AdminPaymentSettingsPage() {
   const [upiId, setUpiId] = useState("");
   const [qrImage, setQrImage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -37,13 +38,53 @@ export default function AdminPaymentSettingsPage() {
     fetchPaymentSettings();
   }, []);
 
+  const handleQrUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setMessage("");
+
+    try {
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(
+        "https://uploads.lovemarriageonline.store/upload.php",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        setError(result.error || "QR image upload failed.");
+        return;
+      }
+
+      setQrImage(result.url);
+      setMessage("QR image uploaded successfully.");
+    } catch (error) {
+      console.error(error);
+      setError("QR image upload failed. Please try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     setError("");
 
     if (!upiId.trim() || !qrImage.trim()) {
-      setError("Please fill both UPI ID and QR image URL.");
+      setError("Please fill both UPI ID and QR image.");
       return;
     }
 
@@ -123,15 +164,21 @@ export default function AdminPaymentSettingsPage() {
               <div>
                 <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#374151]">
                   <QrCode size={16} />
-                  QR Image URL
+                  Upload QR Image
                 </label>
+
                 <input
-                  type="text"
-                  value={qrImage}
-                  onChange={(e) => setQrImage(e.target.value)}
-                  placeholder="Enter QR image URL"
-                  className="h-[54px] w-full rounded-[14px] border border-[#eceef3] px-4 text-sm text-[#374151] outline-none focus:border-pink-400"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrUpload}
+                  className="block w-full rounded-[14px] border border-[#eceef3] px-4 py-3 text-sm text-[#374151] outline-none focus:border-pink-400"
                 />
+
+                {uploadingImage && (
+                  <p className="mt-2 text-sm text-[#ff2f92]">
+                    Uploading QR image...
+                  </p>
+                )}
               </div>
 
               {qrImage && (
@@ -149,7 +196,7 @@ export default function AdminPaymentSettingsPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploadingImage}
                 className="inline-flex h-[54px] items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-[#f35aa5] to-[#b56ae8] px-6 text-base font-bold text-white shadow-[0_12px_30px_rgba(226,92,177,0.28)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Save size={18} />
