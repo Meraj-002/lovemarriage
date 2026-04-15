@@ -420,9 +420,9 @@ export default function ProfilesPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[15px] font-semibold text-[#4b5563]">
-              Showing 
+  Showing{" "}
   <span className="font-bold">{totalProfiles}</span> total profiles
-            </p>
+</p>
 
             <div className="flex items-center gap-3">
               <span className="text-[15px] text-[#6b7280]">Sort by:</span>
