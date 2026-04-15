@@ -63,6 +63,8 @@ const sortOptions = [
   { label: "Age High to Low", value: "age_desc" },
 ];
 
+
+
 function getPlanBadgeClass(plan: string) {
   const normalized = plan?.toLowerCase();
 
@@ -130,6 +132,7 @@ export default function ProfilesPage() {
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
   const [endMessage, setEndMessage] = useState("");
+  const [totalProfiles, setTotalProfiles] = useState(0);
 
   const [actionMessage, setActionMessage] = useState("");
   const [checkingProfileId, setCheckingProfileId] = useState<number | null>(
@@ -172,6 +175,7 @@ export default function ProfilesPage() {
 
         const fetchedProfiles = (result.profiles || []) as Profile[];
         setProfiles(fetchedProfiles);
+        setTotalProfiles(result.total || fetchedProfiles.length);
         setLoadedCount(fetchedProfiles.length);
         setHasMore(fetchedProfiles.length >= targetCount);
 
@@ -416,7 +420,8 @@ export default function ProfilesPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[15px] font-semibold text-[#4b5563]">
-              Showing <span className="font-bold">{profiles.length}</span> premium profiles
+              Showing <span className="font-bold">{profiles.length}</span> of{" "}
+  <span className="font-bold">{totalProfiles}</span> total profiles
             </p>
 
             <div className="flex items-center gap-3">

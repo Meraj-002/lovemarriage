@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+type CountRow = {
+  total: number;
+};
+
 export async function GET(req: NextRequest) {
   try {
     const search = req.nextUrl.searchParams.get("search") || "";
@@ -10,7 +14,44 @@ export async function GET(req: NextRequest) {
     const sortBy = req.nextUrl.searchParams.get("sortBy") || "recent";
     const limit = Number(req.nextUrl.searchParams.get("limit") || "60");
 
-    let sql = `
+    let whereClause = ` WHERE is_active = 1 `;
+    const whereValues: (string | number)[] = [];
+
+    if (search.trim()) {
+      whereClause += ` AND name LIKE ? `;
+      whereValues.push(`%${search.trim()}%`);
+    }
+
+    if (city !== "all") {
+      whereClause += ` AND city = ? `;
+      whereValues.push(city);
+    }
+
+    if (membership !== "all") {
+      whereClause += ` AND LOWER(plan_type) = ? `;
+      whereValues.push(membership.toLowerCase());
+    }
+
+    if (ageRange !== "all") {
+      const [min, max] = ageRange.split("-").map(Number);
+
+      if (!Number.isNaN(min) && !Number.isNaN(max)) {
+        whereClause += ` AND age BETWEEN ? AND ? `;
+        whereValues.push(min, max);
+      }
+    }
+
+    let orderClause = ` ORDER BY id DESC `;
+
+    if (sortBy === "name_asc") {
+      orderClause = ` ORDER BY name ASC `;
+    } else if (sortBy === "age_asc") {
+      orderClause = ` ORDER BY age ASC `;
+    } else if (sortBy === "age_desc") {
+      orderClause = ` ORDER BY age DESC `;
+    }
+
+    const profilesSql = `
       SELECT
         id,
         name,
@@ -23,54 +64,32 @@ export async function GET(req: NextRequest) {
         whatsapp_number,
         is_active
       FROM profiles
-      WHERE is_active = 1
+      ${whereClause}
+      ${orderClause}
+      LIMIT ?
     `;
 
-    const values: (string | number)[] = [];
+    const profilesValues = [...whereValues, limit];
 
-    if (search.trim()) {
-      sql += ` AND name LIKE ? `;
-      values.push(`%${search.trim()}%`);
-    }
+    const totalSql = `
+      SELECT COUNT(*) AS total
+      FROM profiles
+      ${whereClause}
+    `;
 
-    if (city !== "all") {
-      sql += ` AND city = ? `;
-      values.push(city);
-    }
+    const [profilesRows] = await db.query(profilesSql, profilesValues);
+    const [countRows] = await db.query(totalSql, whereValues);
 
-    if (membership !== "all") {
-      sql += ` AND LOWER(plan_type) = ? `;
-      values.push(membership.toLowerCase());
-    }
-
-    if (ageRange !== "all") {
-      const [min, max] = ageRange.split("-").map(Number);
-      if (!Number.isNaN(min) && !Number.isNaN(max)) {
-        sql += ` AND age BETWEEN ? AND ? `;
-        values.push(min, max);
-      }
-    }
-
-    if (sortBy === "name_asc") {
-      sql += ` ORDER BY name ASC `;
-    } else if (sortBy === "age_asc") {
-      sql += ` ORDER BY age ASC `;
-    } else if (sortBy === "age_desc") {
-      sql += ` ORDER BY age DESC `;
-    } else {
-      sql += ` ORDER BY id DESC `;
-    }
-
-    sql += ` LIMIT ? `;
-    values.push(limit);
-
-    const [rows] = await db.query(sql, values);
+    const total =
+      ((countRows as CountRow[])[0]?.total ?? 0);
 
     return NextResponse.json({
-      profiles: rows,
+      profiles: profilesRows,
+      total,
     });
   } catch (error) {
     console.error("Profiles API error:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch profiles." },
       { status: 500 }
