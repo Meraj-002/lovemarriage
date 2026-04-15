@@ -29,7 +29,7 @@ export default function AdminHomePage() {
 
             <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
               <Link
-                href="/admin/add-profile9852"
+                href="/singh3454878/add-profile9852"
                 className="group rounded-[24px] border border-[#f1d6e4] bg-white p-6 shadow-[0_12px_30px_rgba(0,0,0,0.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_35px_rgba(0,0,0,0.08)]"
               >
                 <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-gradient-to-r from-[#f35aa5] to-[#b56ae8] text-white shadow-md">
@@ -51,7 +51,7 @@ export default function AdminHomePage() {
               </Link>
 
               <Link
-                href="/admin/payment-settings9852"
+                href="/singh3454878/payment-settings9852"
                 className="group rounded-[24px] border border-[#f1d6e4] bg-white p-6 shadow-[0_12px_30px_rgba(0,0,0,0.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_35px_rgba(0,0,0,0.08)]"
               >
                 <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-gradient-to-r from-[#f35aa5] to-[#b56ae8] text-white shadow-md">
