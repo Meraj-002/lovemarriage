@@ -1,6 +1,5 @@
 "use client";
 
-// import { useMemo, useState } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -41,12 +40,18 @@ type PlanType = {
   features: string[];
 };
 
-const plans: PlanType[] = [
+type DbPlan = {
+  id: number;
+  name: string;
+  price: number;
+};
+
+const basePlans: PlanType[] = [
   {
     id: 1,
     name: "Silver",
     subtitle: "Perfect for starters",
-    price: "₹999",
+    price: "₹149",
     per: "/month",
     badge: "",
     icon: Medal,
@@ -67,7 +72,7 @@ const plans: PlanType[] = [
     id: 2,
     name: "Gold",
     subtitle: "Most popular choice",
-    price: "₹1,999",
+    price: "₹399",
     per: "/month",
     badge: "RECOMMENDED",
     icon: Crown,
@@ -89,7 +94,7 @@ const plans: PlanType[] = [
     id: 3,
     name: "Diamond",
     subtitle: "Premium experience",
-    price: "₹3,999",
+    price: "₹1199",
     per: "/month",
     badge: "PREMIUM",
     icon: Gem,
@@ -134,6 +139,8 @@ export default function PlansClient() {
   const searchParams = useSearchParams();
   const requiredPlan = (searchParams.get("required") || "").toLowerCase();
 
+  const [plans, setPlans] = useState<PlanType[]>(basePlans);
+
   const requiredPlanName = useMemo(() => {
     if (requiredPlan === "diamond") return "Diamond";
     if (requiredPlan === "gold") return "Gold";
@@ -141,44 +148,70 @@ export default function PlansClient() {
     return "";
   }, [requiredPlan]);
 
-  const initialSelectedPlan =
-    plans.find((plan) => plan.name.toLowerCase() === requiredPlan) || null;
-
-  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(
-    initialSelectedPlan
-  );
-  const [isDialogOpen, setIsDialogOpen] = useState(Boolean(initialSelectedPlan));
+  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [utrNumber, setUtrNumber] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [upiId, setUpiId] = useState("lovemarriage@paytm");
-const [qrImage, setQrImage] = useState(
-  "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png"
-);
+  const [qrImage, setQrImage] = useState(
+    "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png"
+  );
 
-useEffect(() => {
-  const fetchPaymentSettings = async () => {
-    try {
-      const response = await fetch("/api/payment-settings");
-      const result = await response.json();
+  useEffect(() => {
+    const fetchSettingsAndPrices = async () => {
+      try {
+        const response = await fetch("/api/payment-settings");
+        const result = await response.json();
 
-      if (!response.ok) return;
+        if (!response.ok) return;
 
-      if (result.upi_id) {
-        setUpiId(result.upi_id);
+        if (result.upi_id) {
+          setUpiId(result.upi_id);
+        }
+
+        if (result.qr_image) {
+          setQrImage(result.qr_image);
+        }
+
+        if (Array.isArray(result.plans)) {
+          setPlans((prevPlans) =>
+            prevPlans.map((plan) => {
+              const matched = (result.plans as DbPlan[]).find(
+                (item) => item.id === plan.id
+              );
+
+              if (!matched) return plan;
+
+              return {
+                ...plan,
+                price: `₹${Number(matched.price)}`,
+              };
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load payment settings:", error);
       }
+    };
 
-      if (result.qr_image) {
-        setQrImage(result.qr_image);
-      }
-    } catch (error) {
-      console.error("Failed to load payment settings:", error);
+    fetchSettingsAndPrices();
+  }, []);
+
+  useEffect(() => {
+    if (!requiredPlan) {
+      setSelectedPlan(null);
+      setIsDialogOpen(false);
+      return;
     }
-  };
 
-  fetchPaymentSettings();
-}, []);
+    const matchedPlan =
+      plans.find((plan) => plan.name.toLowerCase() === requiredPlan) || null;
+
+    setSelectedPlan(matchedPlan);
+    setIsDialogOpen(Boolean(matchedPlan));
+  }, [requiredPlan, plans]);
 
   const openDialog = (plan: PlanType) => {
     setSelectedPlan(plan);
@@ -477,7 +510,9 @@ useEffect(() => {
                     <div className="text-[28px] font-bold text-[#ec4899] sm:text-[40px]">
                       {selectedPlan.price}
                     </div>
-                    <p className="text-[15px] text-[#5b6474]">One-time payment</p>
+                    <p className="text-[15px] text-[#5b6474]">
+                      One-time payment
+                    </p>
                   </div>
                 </div>
               </div>

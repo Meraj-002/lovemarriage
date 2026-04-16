@@ -5,30 +5,47 @@ type PaymentSettingsRow = {
   id: number;
   upi_id: string;
   qr_image: string;
+  telegram_link: string | null;
+};
+
+type PlanRow = {
+  id: number;
+  name: string;
+  price: number;
 };
 
 export async function GET() {
   try {
-    const [rows] = await db.query(
+    const [settingsRows] = await db.query(
       `
-      SELECT id, upi_id, qr_image
+      SELECT id, upi_id, qr_image, telegram_link
       FROM payment_settings
       ORDER BY id ASC
       LIMIT 1
       `
     );
 
-    const data = rows as PaymentSettingsRow[];
+    const [planRows] = await db.query(
+      `
+      SELECT id, name, price
+      FROM plans
+      ORDER BY rank ASC, id ASC
+      `
+    );
 
-    if (data.length === 0) {
-      return NextResponse.json({
-        upi_id: "lovemarriage@paytm",
-        qr_image:
-          "https://expressionengine.com/asset/img/add-on-details/qrcode_3.png",
-      });
-    }
+    const settings = settingsRows as PaymentSettingsRow[];
+    const plans = planRows as PlanRow[];
 
-    return NextResponse.json(data[0]);
+    const defaultSettings = {
+      upi_id: "lovemarriage@paytm",
+      qr_image: "",
+      telegram_link: "",
+    };
+
+    return NextResponse.json({
+      ...(settings[0] || defaultSettings),
+      plans,
+    });
   } catch (error) {
     console.error("Payment settings GET error:", error);
 

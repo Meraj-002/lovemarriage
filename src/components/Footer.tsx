@@ -1,24 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Heart,
-  Check,
   Facebook,
   Instagram,
   Twitter,
   Youtube,
-  MapPin,
-  Phone,
   Mail,
-  MessageCircle,
   Send,
 } from "lucide-react";
-
-const trustItems = [
-  "Free Registration",
-  "Verified Profiles",
-  "Instant Access",
-  "24/7 Support",
-];
 
 const quickLinks = [
   "Home",
@@ -39,16 +31,32 @@ const supportLinks = [
 ];
 
 export default function Footer() {
+  const [telegramLink, setTelegramLink] = useState("https://t.me/yourusername");
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/payment-settings");
+        const result = await response.json();
+
+        if (!response.ok) return;
+
+        if (result.telegram_link) {
+          setTelegramLink(result.telegram_link);
+        }
+      } catch (error) {
+        console.error("Failed to load telegram link:", error);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
   return (
     <footer className="w-full">
-      {/* Top gradient strip */}
-      
-
-      {/* Main dark footer */}
       <div className="bg-[#08162b] text-white">
         <div className="mx-auto max-w-7xl px-8 pb-10 pt-20">
           <div className="grid grid-cols-1 gap-14 md:grid-cols-2 xl:grid-cols-4">
-            {/* Column 1 */}
             <div>
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-[#ff4fa3] to-[#ff1f8f]">
@@ -85,7 +93,6 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Column 2 */}
             <div>
               <h4 className="font-serif text-[24px] font-bold text-white">
                 Quick Links
@@ -104,7 +111,6 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Column 3 */}
             <div>
               <h4 className="font-serif text-[24px] font-bold text-white">
                 Support
@@ -123,39 +129,25 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Column 4 */}
             <div>
               <h4 className="font-serif text-[24px] font-bold text-white">
                 Contact Us
               </h4>
 
               <div className="mt-8 space-y-6">
-                {/* <div className="flex items-start gap-4">
-                  <MapPin
+                <a
+                  href={telegramLink || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition"
+                >
+                  <Send
                     size={20}
-                    className="mt-1 text-[#ff5aa8]"
+                    className="text-[#ff5aa8]"
                     strokeWidth={2.3}
                   />
-                  <p className="text-[18px] leading-[1.5] text-white/70">
-                    123 Marriage Street, Mumbai,
-                    <br />
-                    Maharashtra 400001
-                  </p>
-                </div> */}
-
-               <a
-  href="https://t.me/yourusername" // 👈 replace with your Telegram link
-  target="_blank"
-  rel="noopener noreferrer"
-  className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition"
->
-  <Send
-    size={20}
-    className="text-[#ff5aa8]"
-    strokeWidth={2.3}
-  />
-  <p className="text-[18px] text-white/70">Telegram</p>
-</a>
+                  <p className="text-[18px] text-white/70">Telegram</p>
+                </a>
 
                 <div className="flex items-center gap-4">
                   <Mail
@@ -163,24 +155,12 @@ export default function Footer() {
                     className="text-[#ff5aa8]"
                     strokeWidth={2.3}
                   />
-                  <p className="text-[18px] text-white/70">
-                    support@lovemarriage.com
+                  <p className="text-[16px] text-white/70">
+                    info@lovemarriageonline.store
                   </p>
                 </div>
-
-                {/* <div className="flex items-center gap-4">
-                  <MessageCircle
-                    size={20}
-                    className="text-[#ff5aa8]"
-                    strokeWidth={2.3}
-                  />
-                  <p className="text-[18px] text-white/70">
-                    WhatsApp: +91 98765 43210
-                  </p>
-                </div> */}
               </div>
 
-              {/* Support box */}
               <div className="mt-8 rounded-[18px] bg-white/10 px-5 py-5">
                 <h5 className="text-[18px] font-semibold text-white/90">
                   Available 24/7
@@ -192,7 +172,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Bottom divider */}
           <div className="mt-16 border-t border-white/10 pt-8">
             <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
               <p className="text-[18px] text-white/60">

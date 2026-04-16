@@ -23,7 +23,7 @@ export default function AdminHomePage() {
               </h1>
 
               <p className="mx-auto mt-3 max-w-2xl text-[16px] leading-7 text-[#6b7280]">
-                Quickly manage profiles and payment settings from one place.
+                Quickly manage profiles, payment settings, Telegram link, and prices from one place.
               </p>
             </div>
 
@@ -59,16 +59,15 @@ export default function AdminHomePage() {
                 </div>
 
                 <h2 className="mt-5 text-[24px] font-bold text-[#162033]">
-                  Update Payment Details
+                  Update Payment, Telegram & Prices
                 </h2>
 
                 <p className="mt-2 text-[15px] leading-7 text-[#6b7280]">
-                  Change the UPI ID and upload a new QR code image used on the
-                  plans and payment popup page.
+                  Change UPI ID, upload QR image, update Telegram link, and edit Silver, Gold, and Diamond plan prices.
                 </p>
 
                 <div className="mt-5 inline-flex items-center text-sm font-bold text-[#ff2f92]">
-                  Open Payment Settings
+                  Open Settings
                 </div>
               </Link>
             </div>

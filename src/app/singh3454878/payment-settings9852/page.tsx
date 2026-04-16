@@ -3,11 +3,20 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Save, QrCode, CircleDollarSign } from "lucide-react";
+import { Save, QrCode, CircleDollarSign, Send, BadgeIndianRupee } from "lucide-react";
+
+type PlanItem = {
+  id: number;
+  name: string;
+  price: number;
+};
 
 export default function AdminPaymentSettingsPage() {
   const [upiId, setUpiId] = useState("");
+  const [telegramLink, setTelegramLink] = useState("");
   const [qrImage, setQrImage] = useState("");
+  const [plans, setPlans] = useState<PlanItem[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -21,15 +30,17 @@ export default function AdminPaymentSettingsPage() {
         const result = await response.json();
 
         if (!response.ok) {
-          setError(result.error || "Failed to load payment settings.");
+          setError(result.error || "Failed to load settings.");
           return;
         }
 
         setUpiId(result.upi_id || "");
         setQrImage(result.qr_image || "");
+        setTelegramLink(result.telegram_link || "");
+        setPlans(result.plans || []);
       } catch (error) {
         console.error(error);
-        setError("Failed to load payment settings.");
+        setError("Failed to load settings.");
       } finally {
         setPageLoading(false);
       }
@@ -78,13 +89,26 @@ export default function AdminPaymentSettingsPage() {
     }
   };
 
+  const handlePlanPriceChange = (id: number, value: string) => {
+    setPlans((prev) =>
+      prev.map((plan) =>
+        plan.id === id
+          ? {
+              ...plan,
+              price: Number(value) || 0,
+            }
+          : plan
+      )
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     setError("");
 
     if (!upiId.trim() || !qrImage.trim()) {
-      setError("Please fill both UPI ID and QR image.");
+      setError("Please fill UPI ID and upload QR image.");
       return;
     }
 
@@ -99,17 +123,19 @@ export default function AdminPaymentSettingsPage() {
         body: JSON.stringify({
           upi_id: upiId.trim(),
           qr_image: qrImage.trim(),
+          telegram_link: telegramLink.trim(),
+          plans,
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to update payment settings.");
+        setError(result.error || "Failed to update settings.");
         return;
       }
 
-      setMessage("Payment settings updated successfully.");
+      setMessage("Settings updated successfully.");
     } catch (error) {
       console.error(error);
       setError("Something went wrong. Please try again.");
@@ -123,12 +149,12 @@ export default function AdminPaymentSettingsPage() {
       <Navbar />
 
       <main className="px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl rounded-[28px] bg-white p-6 shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:p-8">
+        <div className="mx-auto max-w-4xl rounded-[28px] bg-white p-6 shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:p-8">
           <h1 className="text-[30px] font-extrabold text-[#162033] sm:text-[38px]">
-            Payment Settings
+            Payment & Site Settings
           </h1>
           <p className="mt-2 text-[15px] text-[#6b7280] sm:text-[16px]">
-            Update UPI ID and QR image used on the plans page.
+            Update UPI ID, QR image, Telegram link, and membership prices.
           </p>
 
           {pageLoading ? (
@@ -157,6 +183,20 @@ export default function AdminPaymentSettingsPage() {
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
                   placeholder="Enter UPI ID"
+                  className="h-[54px] w-full rounded-[14px] border border-[#eceef3] px-4 text-sm text-[#374151] outline-none focus:border-pink-400"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#374151]">
+                  <Send size={16} />
+                  Telegram Link
+                </label>
+                <input
+                  type="text"
+                  value={telegramLink}
+                  onChange={(e) => setTelegramLink(e.target.value)}
+                  placeholder="https://t.me/yourusername"
                   className="h-[54px] w-full rounded-[14px] border border-[#eceef3] px-4 text-sm text-[#374151] outline-none focus:border-pink-400"
                 />
               </div>
@@ -194,13 +234,40 @@ export default function AdminPaymentSettingsPage() {
                 </div>
               )}
 
+              <div className="rounded-[18px] border border-[#eceef3] bg-[#fafafa] p-4 sm:p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <BadgeIndianRupee size={18} className="text-[#ff2f92]" />
+                  <h3 className="text-[18px] font-bold text-[#162033]">
+                    Membership Prices
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {plans.map((plan) => (
+                    <div key={plan.id}>
+                      <label className="mb-2 block text-sm font-semibold text-[#374151]">
+                        {plan.name} Price
+                      </label>
+                      <input
+                        type="number"
+                        value={plan.price}
+                        onChange={(e) =>
+                          handlePlanPriceChange(plan.id, e.target.value)
+                        }
+                        className="h-[54px] w-full rounded-[14px] border border-[#eceef3] px-4 text-sm text-[#374151] outline-none focus:border-pink-400"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading || uploadingImage}
                 className="inline-flex h-[54px] items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-[#f35aa5] to-[#b56ae8] px-6 text-base font-bold text-white shadow-[0_12px_30px_rgba(226,92,177,0.28)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Save size={18} />
-                {loading ? "Saving..." : "Save Payment Settings"}
+                {loading ? "Saving..." : "Save Settings"}
               </button>
             </form>
           )}
