@@ -31,7 +31,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { name: "Home", href: "/" },
+    { name: "Home", href: "/dashboard" },
     { name: "Profiles", href: "/profiles" },
     { name: "Plans", href: "/plans" },
     { name: "How it Works", href: "/howitworks" },
